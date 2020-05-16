@@ -1,0 +1,18 @@
+---
+title: Setting up myblog
+author: Owen Beelders
+date: '2020-05-16'
+slug: setting-up-myblog
+categories: []
+tags: []
+---
+
+
+
+<p>After much trial-and-error, I found that the following steps worked best for me on a Windows machine once my github account had been set up:</p>
+<ol style="list-style-type: decimal">
+<li>Run through Chapters 1 - 14 of <a href="https://happygitwithr.com/new-github-first.html">happygitwithr.com</a> and ensure that RStudio can connect to your github account.</li>
+<li>Implement chapter 15 of <a href="https://happygitwithr.com/new-github-first.html">happygitwithr.com</a>. Chapter 15 shows you how to set up a github folder for your site, clone it and open the R project for the site in the cloned directory. This makes the connection between RStudio and github seamless.</li>
+<li>I am hosting via <a href="netlify.com">netlify</a>. Netlify has button, “New site from Git” that does exactly that. Once the website has been updloaded to github, you can use the “production deploys” section to deploy the site. Steps 2 and 3 ensure that the creation of a post, uploading to github, linking to netlify and then deploying the site is seamless.</li>
+</ol>
+<p>Notes: I reviewed this post by Rob Hyndman <a href="https://robjhyndman.com/hyndsight/blogdown/">Converting to blogdown</a> and the link to <a href="https://amber.rbind.io/2016/12/19/website/">amber.rbind.io</a> but found it too technical. (This is more a reflection of my lack of expertise). The list of blogdown functions is useful and it made me go back to <a href="https://bookdown.org/yihui/blogdown/">blogdown</a> and actually read the text, which turned out to be very useful. The <a href="https://daijiang.name/en/2017/03/30/updating-website-with-hugo-and-blogdown/">Tweak your website</a> had useful information.</p>
