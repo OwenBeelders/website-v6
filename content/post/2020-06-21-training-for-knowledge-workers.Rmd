@@ -1,0 +1,9 @@
+---
+title: Training for knowledge workers
+author: Owen Beelders
+date: '2020-06-21'
+slug: training-for-knowledge-workers
+categories: []
+tags: []
+---
+Tyler Cowen poses the question: “What is it you do to train that is comparable to a pianist practicing scales?” and references the blog post by David Perell [Learn like an athlete](https://www.perell.com/blog/learn-like-an-athlete).
