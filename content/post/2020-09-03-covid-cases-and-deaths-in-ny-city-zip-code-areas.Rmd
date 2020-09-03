@@ -1,0 +1,559 @@
+---
+title: "Covid Cases and Deaths in NY city zip code areas"
+author: "Owen Beelders"
+date: '2020-09-03'
+slug: covid-cases-and-deaths-in-ny-city-zip-code-areas
+categories: []
+tags: []
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(tigris_use_cache = TRUE)
+```
+
+## Data for NYC
+
+The [New York City Department of Health](https://www1.nyc.gov/site/doh/index.page) publishes its coronavirus data on [github](https://github.com/nychealth). The [repository](https://github.com/nychealth/coronavirus-data) includes detailed information on the data sets and the definitions of the variables within the data. Our interest is in the zip code data: how virulent is the virus within our neighborhood?
+
+The files "data-by-modzcta.csv" contain data on cases and deaths by cumulative count and rate, population, percentage of people tested positive and the number of people tested for each modified ZIP code tabulation area (ZCTA). Each modified ZCTA has a neighborhood and borough name. Prior commits indicate that modzcta.csv files have been uploaded since May 18.
+
+We download the data for July 31 and August 31 to determine the ZCTA's where the virus has been most prevalent and also to determine the percentage change in case and death counts during the month.
+
+We merge the covid data with the zctas data set in the [tigris](https://cran.r-project.org/web/packages/tigris/index.html) package so that we can plot the data in a map. We use the function, [st_as_sf](https://www.rdocumentation.org/packages/sf/versions/0.9-5/topics/st_as_sf), to convert the data frame to a spatial object.
+
+On August 20, the NYC Department of Health added data on antibody [testing](https://github.com/nychealth/coronavirus-data/tree/master/testing). We analyze the most recent file for August 27.
+
+
+Summary of analysis as of August 31:
+
+* ZCTA 11368 (Corona/North Corona) has the highest case count
+* ZCTA 11369 (Airport/East Elmhurst) has the highest case rate
+* ZCTA 11368 (Corona/North Corona) has the highest death count
+* ZCTA 11239 (East New York) has the highest death rate
+
+Changes in cases and deaths during August 2020
+
+* The percentage change in case counts is relatively uniform across zip codes, i.e. no ZCTA stands out as a hotspot. The average (median) percentage change for August is 4.3% (4%).
+* The percentage change in deaths is relatively uniform across zip codes except for ZCTA's where the population is small or the number of deaths has been low. The average (median) percentage change for August is 0.78% (0%).
+
+Antibody tests
+
+* The three ZCTA's that stand out with high positive antibody rates in excess of 40% are 11368 (Corona/North Corona) , 11219 (Borough Park) and 1139 (Airport/East Elmhurst).
+
+
+## Counts and Rates by Zip code
+
+In the four figures below, we observe the following:
+
+* ZCTA 11368 (Corona/North Corona) stands out as having the highest case count
+* The five ZCTA's with the highest case rate are 11369 (Airport/East Elmhurst, Queens), 11239 (East New York, Brooklyn), 11368 (Corona/North Corona, Queens), 10469 (Allerton/Baychester/Pelham Gardens/Williamsbridge, Bronx) and 11372 (Jackson Heights, Queens).
+* ZCTA 11368 (Corona/North Corona) stands out as having the highest death count.
+* ZCTA 11239 (East New York, Brooklyn) has the highest death rate although it's population of about 12,000 is small in comparison to other ZCTA's.
+
+```{r nyc_cum, echo=FALSE,warning=FALSE,message=FALSE, results="hide"}
+
+library("ggplot2")
+library("tigris")
+library("sf")
+library("kableExtra")
+library("ggsci")
+library("ggpubr")
+
+Aug31 <- read.csv(url("https://raw.githubusercontent.com/nychealth/coronavirus-data/bd0a5fe2dd4e768856b64b1d17b295793ae2488f/data-by-modzcta.csv"))
+July31 <- read.csv(url("https://raw.githubusercontent.com/nychealth/coronavirus-data/f10021ab793108aad8a25db7a85fa0d722ad7912/data-by-modzcta.csv"))
+June31 <- read.csv(url("https://raw.githubusercontent.com/nychealth/coronavirus-data/fc6ca2e80b71390178da3cf5776c2cf0d449d89f/data-by-modzcta.csv"))
+
+nyc_zcta <- unique(Aug31$MODIFIED_ZCTA)  #get the unique zip codes for the nyc
+
+#get longitude,latitude and geometry for ZCTAs
+zip1011 <- tigris::zctas(starts_with = c("11","10"))  #state is only available for 2000 and 2010
+
+#extract zip codes we 
+nyc_zcta_shape <- zip1011[zip1011$ZCTA5CE10 %in% nyc_zcta,]
+
+dat <- merge(Aug31[,c("MODIFIED_ZCTA","COVID_CASE_COUNT","COVID_CASE_RATE","COVID_DEATH_COUNT","COVID_DEATH_RATE")],
+             nyc_zcta_shape[,c("ZCTA5CE10","geometry")],
+             by.x=c("MODIFIED_ZCTA"), by.y=c("ZCTA5CE10"))
+
+
+dat_sf <- dat %>% st_as_sf()
+
+
+ggplot(data=dat_sf)  +
+  geom_sf(data=dat_sf, aes(fill=COVID_CASE_COUNT)) +
+  #scale_fill_brewer(palette="Greens")
+  scale_fill_distiller(trans="reverse") +
+  theme(legend.title = element_blank()) +
+  labs(title="Cumulative Covid Case Count by NYC ZCTA",
+       subtitle="As of: August 31 2020",
+       caption="https://github.com/nychealth/coronavirus-data") +
+  theme_minimal() +
+  theme(axis.text.x=element_blank(),
+        axis.text.y=element_blank())
+
+
+ggplot(data=dat_sf)  +
+  geom_sf(data=dat_sf, aes(fill=COVID_CASE_RATE)) +
+  #scale_fill_brewer(palette="Greens")
+  scale_fill_distiller(trans="reverse")+
+    theme(legend.title = element_blank()) +
+  labs(title="Cumulative Covid Case Rate per 100,000 by NYC ZCTA",
+       subtitle="As of: August 31 2020",
+       caption="https://github.com/nychealth/coronavirus-data") +
+  theme_minimal() +
+  theme(axis.text.x=element_blank(),
+        axis.text.y=element_blank())
+
+ggplot(data=dat_sf)  +
+  geom_sf(data=dat_sf, aes(fill=COVID_DEATH_COUNT)) +
+  #scale_fill_brewer(palette="Greens")
+  scale_fill_distiller(trans="reverse") +
+    theme(legend.title = element_blank()) +
+  labs(title="Cumulative Covid Death Count by NYC ZCTA",
+       subtitle="As of: August 31 2020",
+       caption="https://github.com/nychealth/coronavirus-data") +
+  theme_minimal() +
+  theme(axis.text.x=element_blank(),
+        axis.text.y=element_blank())
+
+
+ggplot(data=dat_sf)  +
+  geom_sf(data=dat_sf, aes(fill=COVID_DEATH_RATE)) +
+  #scale_fill_brewer(palette="Greens")
+  scale_fill_distiller(trans="reverse") +
+    theme(legend.title = element_blank()) +
+  labs(title="Cumulative Covid Death Rate per 100,000 by NYC ZCTA",
+       subtitle="As of: August 31 2020",
+       caption="https://github.com/nychealth/coronavirus-data") +
+  theme_minimal() +
+  theme(axis.text.x=element_blank(),
+        axis.text.y=element_blank())
+
+```
+
+```{r table_cum, eval=FALSE, echo=FALSE}
+
+#top ten for case count
+
+Aug31CC <- Aug31[order(-Aug31$COVID_CASE_COUNT),]
+
+Aug31CC10 <- Aug31CC[1:10,c(1,2,3,4,5,7,8)]
+
+Aug31CC10 %>%
+  kable() %>%
+  kable_styling() %>%
+  scroll_box(width = "100%", height = "200px")
+
+Aug31CR <- Aug31[order(-Aug31$COVID_CASE_RATE),]
+
+Aug31CR10 <- Aug31CR[1:10,c(1,2,3,4,5,7,8)]
+
+Aug31CR10 %>%
+  kable() %>%
+  kable_styling() %>%
+  scroll_box(width = "100%", height = "200px")
+
+```
+
+## How have the counts and rates changed in August 2020?
+
+* The percentage change in the covid case count has been relatively uniform across zip codes, i.e. no ZCTA stands out as a hotspot,
+* The percentage change in the covid death count has been relatively uniform across zip codes except for a few ZCTA's where the death count was low or the ppulation is small. For example, in 11222 (Greenpoint, Brooklyn) the number of deaths was 32 and increased by 2 to 34, i.e. 6.25% increase.
+
+```{r pressure, echo=FALSE}
+
+
+
+JulyBoth <- merge(July31[,c("MODIFIED_ZCTA","NEIGHBORHOOD_NAME","BOROUGH_GROUP","COVID_CASE_COUNT","COVID_CASE_RATE",
+                            "COVID_DEATH_COUNT","COVID_DEATH_RATE","POP_DENOMINATOR","PERCENT_POSITIVE",
+                            "TOTAL_COVID_TESTS")],
+                  Aug31[,c("MODIFIED_ZCTA","COVID_CASE_COUNT","COVID_CASE_RATE","COVID_DEATH_COUNT","COVID_DEATH_RATE",
+                            "PERCENT_POSITIVE","TOTAL_COVID_TESTS")],
+                  by="MODIFIED_ZCTA")
+
+JulyBoth$DIFF_CASE_COUNT  <- JulyBoth$COVID_CASE_COUNT.y - JulyBoth$COVID_CASE_COUNT.x
+JulyBoth$DIFF_CASE_RATE   <- JulyBoth$COVID_CASE_RATE.y - JulyBoth$COVID_CASE_RATE.x
+JulyBoth$DIFF_DEATH_COUNT <- JulyBoth$COVID_DEATH_COUNT.y - JulyBoth$COVID_DEATH_COUNT.x
+JulyBoth$DIFF_DEATH_RATE  <- JulyBoth$COVID_DEATH_RATE.y - JulyBoth$COVID_DEATH_RATE.x
+
+JulyBoth$Pct_Ch_CASE_COUNT  <- 100*(JulyBoth$COVID_CASE_COUNT.y - JulyBoth$COVID_CASE_COUNT.x)/JulyBoth$COVID_CASE_COUNT.x
+JulyBoth$Pct_Ch_CASE_RATE   <- 100*(JulyBoth$COVID_CASE_RATE.y - JulyBoth$COVID_CASE_RATE.x)/JulyBoth$COVID_CASE_RATE.x
+JulyBoth$Pct_Ch_DEATH_COUNT <- 100*(JulyBoth$COVID_DEATH_COUNT.y - JulyBoth$COVID_DEATH_COUNT.x)/JulyBoth$COVID_DEATH_COUNT.x
+JulyBoth$Pct_Ch_DEATH_RATE  <- 100*(JulyBoth$COVID_DEATH_RATE.y - JulyBoth$COVID_DEATH_RATE.x)/JulyBoth$COVID_DEATH_RATE.x
+
+
+
+datBoth <- merge(JulyBoth,nyc_zcta_shape[,c("ZCTA5CE10","geometry")],
+             by.x=c("MODIFIED_ZCTA"), by.y=c("ZCTA5CE10"))
+
+datBoth_sf <- datBoth %>% st_as_sf()
+
+ggplot(data=datBoth_sf)  +
+  geom_sf(data=datBoth_sf, aes(fill=Pct_Ch_CASE_COUNT)) +
+  #scale_fill_brewer(palette="Greens")
+  scale_fill_distiller(trans="reverse") +
+  theme(legend.title = element_blank()) +
+  labs(title="Percentage Change in Covid Case Count by NYC ZCTA",
+       subtitle="July 31 - August 31",
+       caption="https://github.com/nychealth/coronavirus-data") +
+  theme_minimal() +
+  theme(axis.text.x=element_blank(),
+        axis.text.y=element_blank())
+
+
+ggplot(data=datBoth_sf)  +
+  geom_sf(data=datBoth_sf, aes(fill=Pct_Ch_DEATH_COUNT)) +
+  #scale_fill_brewer(palette="Greens")
+  scale_fill_distiller(trans="reverse")+
+  theme(legend.title = element_blank()) +
+  labs(title="Percentage Change in Covid Death Count by NYC ZCTA",
+       subtitle="July 31 - August 31",
+       caption="https://github.com/nychealth/coronavirus-data") +
+  theme_minimal() +
+  theme(axis.text.x=element_blank(),
+        axis.text.y=element_blank())
+
+
+
+```
+
+
+
+```{r hist,eval=FALSE, echo=FALSE,message=FALSE,warning=FALSE}
+
+#eval=FALSE, 
+
+summary(JulyBoth[,c("Pct_Ch_CASE_COUNT","Pct_Ch_DEATH_COUNT")])
+
+
+dh1 <- ggplot(data=JulyBoth, mapping=aes(x=Pct_Ch_CASE_COUNT)) + 
+  geom_histogram(color="red", fill="red", alpha=0.5) +
+  scale_color_simpsons()+
+  scale_fill_simpsons() +
+  theme_minimal()
+
+dh1b <- ggplot(data=JulyBoth[JulyBoth$POP_DENOMINATOR>10000,], mapping=aes(x=Pct_Ch_CASE_COUNT)) + 
+  geom_histogram(color="red", fill="red", alpha=0.5) +
+  scale_color_simpsons()+
+  scale_fill_simpsons() +
+  theme_minimal()
+
+
+dh2 <- ggplot(data=JulyBoth, mapping=aes(x=DIFF_CASE_RATE)) + 
+  geom_histogram(color="red", fill="red", alpha=0.5) +
+  scale_color_simpsons()+
+  scale_fill_simpsons() +
+  theme_minimal()
+
+dh3 <- ggplot(data=JulyBoth, mapping=aes(x=Pct_Ch_DEATH_COUNT)) + 
+  geom_histogram(color="red", fill="red", alpha=0.5) +
+  scale_color_simpsons()+
+  scale_fill_simpsons() +
+  theme_minimal()
+
+dh3b <- ggplot(data=JulyBoth[JulyBoth$POP_DENOMINATOR>10000,], mapping=aes(x=Pct_Ch_DEATH_COUNT)) + 
+  geom_histogram(color="red", fill="red", alpha=0.5) +
+  scale_color_simpsons()+
+  scale_fill_simpsons() +
+  theme_minimal()
+
+dh4 <- ggplot(data=JulyBoth, mapping=aes(x=DIFF_DEATH_RATE)) + 
+  geom_histogram(color="red", fill="red", alpha=0.5) +
+  scale_color_simpsons()+
+  scale_fill_simpsons() +
+  theme_minimal()
+
+
+#ggarrange(dh1,dh1b,dh3,dh3b, ncol=2,nrow=2)
+
+```
+
+## How have ZCTA level cases and deaths changed relative to the population?
+
+* The percentage change in case counts is relatively uniform across zip codes and unrelated to the size of the population. The average (median) percentage change for August is 4.3% (4%).
+* The percentage change in death counts is also uniform across zip codes except for zip codes where the population is small or the cumulative cases has been low. The average (median) percentage change for August is 0.78% (0%).
+
+```{r ch, echo=FALSE, warning=FALSE, message=FALSE, fig.height = 10, fig.width = 10, fig.align = "center"}
+
+
+#Case Counts: How have they changed?
+
+pcc1 <- ggplot(data=JulyBoth,mapping=aes(x=POP_DENOMINATOR,y=DIFF_CASE_COUNT, color="red")) + 
+  geom_point(data=JulyBoth,aes(size=POP_DENOMINATOR), alpha=0.5) +
+  #scale_fill_distiller(trans="reverse") +
+  #scale_fill_manual(values=c("red","blue")) +
+  geom_smooth() +
+theme_minimal() +
+  ggtitle("Change in Covid Case Count vs Population by modified zipcode",
+          subtitle="July 31 - August 31")  +
+  labs(y="Change in Case Count", 
+       x="Population, July 31 2020", 
+       caption = "Source:https://github.com/nychealth",
+       size="Population") 
+
+pcc2 <- ggplot(data=JulyBoth,mapping=aes(x=POP_DENOMINATOR,y=Pct_Ch_CASE_COUNT, color="red")) + 
+  geom_point(data=JulyBoth,aes(size=POP_DENOMINATOR), alpha=0.5) +
+  #scale_fill_distiller(trans="reverse") +
+  #scale_fill_manual(values=c("red","blue")) +
+ # geom_smooth() +
+  theme_minimal() +
+  ggtitle("Percentage change in Covid Case Count vs Population by modified zipcode",
+          subtitle="July 31 - August 31")  +
+  labs(y="Percentage Change in Case Count (%)", 
+       x="Population, July 31 2020", 
+       caption = "Source:https://github.com/nychealth",
+       size="Population") 
+
+pcc3 <- ggplot(data=JulyBoth,mapping=aes(x=COVID_CASE_COUNT.x,y=DIFF_CASE_COUNT, color="red")) + 
+  geom_point(data=JulyBoth,aes(size=POP_DENOMINATOR), alpha=0.5) +
+  #scale_fill_distiller(trans="reverse") +
+  #scale_fill_manual(values=c("red","blue")) +
+  geom_smooth() +
+  theme_minimal() +
+  ggtitle("Change in Covid Case Count by modified zipcode",
+          subtitle="July 31 - August 31")  +
+  labs(y="Change in Case Count", 
+       x="COVID Case Count, July 31 2020", 
+       caption = "Source:https://github.com/nychealth",
+       size="Population") 
+
+pcc4 <- ggplot(data=JulyBoth,mapping=aes(x=COVID_CASE_COUNT.x,y=Pct_Ch_CASE_COUNT, color="red")) + 
+  geom_point(data=JulyBoth,aes(size=POP_DENOMINATOR), alpha=0.5) +
+  #scale_fill_distiller(trans="reverse") +
+  #scale_fill_manual(values=c("red","blue")) +
+  geom_smooth() +
+  theme_minimal() +
+  ggtitle("Percentage change in Covid Case Count vs Population by modified zipcode",
+          subtitle="July 31 - August 31")  +
+  labs(y="Percentage hange in Case Count (%)", 
+       x="COVID Case Count, July 31 2020", 
+       caption = "Source:https://github.com/nychealth",
+       size="Population") 
+
+
+#ggarrange(pcc1,pcc2,pcc3,pcc4,nrow=2,ncol=2)
+ggarrange(pcc1,pcc2,nrow=2,ncol=1)
+
+#3 Covid Case Rates - how have they changed?
+#Don't need this - it is the same as %change in case counts
+
+pcr1 <- ggplot(data=JulyBoth,mapping=aes(x=POP_DENOMINATOR,y=DIFF_CASE_RATE, color="red")) + 
+  geom_point(data=JulyBoth,aes(size=POP_DENOMINATOR), alpha=0.5) +
+  #scale_fill_distiller(trans="reverse") +
+  #scale_fill_manual(values=c("red","blue")) +
+  geom_smooth() +
+  theme_minimal() +
+  ggtitle("Change in Covid Case Rate by Population within modified zipcode",
+          subtitle="July 31 - August 31")  +
+  labs(y="Change in Case Rate", 
+       x="Population, July 31 2020", 
+       caption = "Source:https://github.com/nychealth",
+       size="Population") 
+
+pcr2 <- ggplot(data=JulyBoth,mapping=aes(x=POP_DENOMINATOR,y=Pct_Ch_CASE_RATE, color="red")) + 
+  geom_point(data=JulyBoth,aes(size=POP_DENOMINATOR), alpha=0.5) +
+  #scale_fill_distiller(trans="reverse") +
+  #scale_fill_manual(values=c("red","blue")) +
+  geom_smooth() +
+  theme_minimal() +
+  ggtitle("Percentage change in Covid Case Rate by Population within modified zipcode",
+          subtitle="July 31 - August 31")  +
+  labs(y="Percentage Change in Case Rate (%)", 
+       x="Population, July 31 2020", 
+       caption = "Source:https://github.com/nychealth",
+       size="Population") 
+
+pcr3 <- ggplot(data=JulyBoth,mapping=aes(x=COVID_CASE_RATE.x,y=DIFF_CASE_RATE, color="red")) + 
+  geom_point(data=JulyBoth,aes(size=POP_DENOMINATOR), alpha=0.5) +
+  #scale_fill_distiller(trans="reverse") +
+  #scale_fill_manual(values=c("red","blue")) +
+  geom_smooth() +
+  theme_minimal() +
+  ggtitle("Change in Covid Case Rate by modified zipcode",
+          subtitle="July 31 - August 31")  +
+  labs(y="Change in Case Rate", 
+       x="COVID Case Rate, July 31 2020", 
+       caption = "Source:https://github.com/nychealth",
+       size="Population") 
+
+pcr4 <- ggplot(data=JulyBoth,mapping=aes(x=COVID_CASE_RATE.x,y=Pct_Ch_CASE_COUNT, color="red")) + 
+  geom_point(data=JulyBoth,aes(size=POP_DENOMINATOR), alpha=0.5) +
+  #scale_fill_distiller(trans="reverse") +
+  #scale_fill_manual(values=c("red","blue")) +
+  geom_smooth() +
+  theme_minimal() +
+  ggtitle("Percentage Change in Covid Case Rate by modified zipcode",
+          subtitle="July 31 - August 31")  +
+  labs(y="Percentage change in Case Count", 
+       x="COVID Case Rate, July 31 2020", 
+       caption = "Source:https://github.com/nychealth",
+       size="Population") 
+
+#ggarrange(pcr1,pcr2,pcr3,pcr4,nrow=2,ncol=2)
+#ggarrange(pcr2,pcr4,nrow=2,ncol=1)   #we don't need % change of rate because it is same as change in
+###################
+#Death Count
+
+
+pdc1 <- ggplot(data=JulyBoth,mapping=aes(x=POP_DENOMINATOR,y=DIFF_DEATH_COUNT, color="red")) + 
+  geom_point(data=JulyBoth,aes(size=POP_DENOMINATOR), alpha=0.5) +
+  #scale_fill_distiller(trans="reverse") +
+  #scale_fill_manual(values=c("red","blue")) +
+  #geom_smooth() +
+  theme_minimal() +
+  ggtitle("Change in Covid Death Count vs Population by modified zipcode",
+          subtitle="July 31 - August 31")  +
+  labs(y="Change in Death Count", 
+       x="Population, July 31 2020", 
+       caption = "Source:https://github.com/nychealth",
+       size="Population") 
+
+pdc2 <- ggplot(data=JulyBoth,mapping=aes(x=POP_DENOMINATOR,y=Pct_Ch_DEATH_COUNT, color="red")) + 
+  geom_point(data=JulyBoth,aes(size=POP_DENOMINATOR), alpha=0.5) +
+  #scale_fill_distiller(trans="reverse") +
+  #scale_fill_manual(values=c("red","blue")) +
+  #geom_smooth() +
+  theme_minimal() +
+  ggtitle("Percentage change in Covid Death Count vs Population by modified zipcode",
+          subtitle="July 31 - August 31")  +
+  labs(y="Percentage Change in Death Count (%)", 
+       x="Population, July 31 2020", 
+       caption = "Source:https://github.com/nychealth",
+       size="Population") 
+
+pdc3 <- ggplot(data=JulyBoth,mapping=aes(x=COVID_CASE_COUNT.x,y=DIFF_CASE_COUNT, color="red")) + 
+  geom_point(data=JulyBoth,aes(size=POP_DENOMINATOR), alpha=0.5) +
+  #scale_fill_distiller(trans="reverse") +
+  #scale_fill_manual(values=c("red","blue")) +
+  geom_smooth() +
+  theme_minimal() +
+  ggtitle("Change in Covid Death Count vs Population by modified zipcode",
+          subtitle="July 31 - August 31")  +
+  labs(y="Change in Death Count", 
+       x="COVID Death Count, July 31 2020", 
+       caption = "Source:https://github.com/nychealth",
+       size="Population") 
+
+pdc4 <- ggplot(data=JulyBoth,mapping=aes(x=COVID_CASE_COUNT.x,y=Pct_Ch_DEATH_COUNT, color="red")) + 
+  geom_point(data=JulyBoth,aes(size=POP_DENOMINATOR), alpha=0.5) +
+  #scale_fill_distiller(trans="reverse") +
+  #scale_fill_manual(values=c("red","blue")) +
+  geom_smooth() +
+  theme_minimal() +
+  ggtitle("Change in Covid Death Count vs Population by modified zipcode",
+          subtitle="July 31 - August 31")  +
+  labs(y="Percentage Change in Death Count", 
+       x="COVID Death Count, July 31 2020", 
+       caption = "Source:https://github.com/nychealth",
+       size="Population") 
+
+#ggarrange(pdc1,pdc2,pdc3,pdc4,nrow=2,ncol=2)
+ggarrange(pdc1,pdc2,nrow=2,ncol=1)
+
+#######################
+#Death Rate  - DOn't need this
+
+pdr1 <- ggplot(data=JulyBoth,mapping=aes(x=POP_DENOMINATOR,y=DIFF_DEATH_RATE, color="red")) + 
+  geom_point(data=JulyBoth,aes(size=POP_DENOMINATOR), alpha=0.5) +
+  #scale_fill_distiller(trans="reverse") +
+  #scale_fill_manual(values=c("red","blue")) +
+  geom_smooth() +
+  theme_minimal() +
+  ggtitle("Change in Covid Death Rate by modified zipcode",
+          subtitle="July 31 - August 31")  +
+  labs(y="Change in Death Rate", 
+       x="Population, July 31 2020", 
+       caption = "Source:https://github.com/nychealth",
+       size="Population") 
+
+pdr2 <- ggplot(data=JulyBoth,mapping=aes(x=POP_DENOMINATOR,y=Pct_Ch_DEATH_RATE, color="red")) + 
+  geom_point(data=JulyBoth,aes(size=POP_DENOMINATOR), alpha=0.5) +
+  #scale_fill_distiller(trans="reverse") +
+  #scale_fill_manual(values=c("red","blue")) +
+  geom_smooth() +
+  theme_minimal() +
+  ggtitle("Percent change in Covid Death Rate by modified zipcode",
+          subtitle="July 31 - August 31")  +
+  labs(y="Percentage Change in Death Rate (%)", 
+       x="Population, July 31 2020", 
+       caption = "Source:https://github.com/nychealth",
+       size="Population") 
+
+pdr3 <- ggplot(data=JulyBoth,mapping=aes(x=COVID_CASE_RATE.x,y=DIFF_CASE_RATE, color="red")) + 
+  geom_point(data=JulyBoth,aes(size=POP_DENOMINATOR), alpha=0.5) +
+  #scale_fill_distiller(trans="reverse") +
+  #scale_fill_manual(values=c("red","blue")) +
+  geom_smooth() +
+  theme_minimal() +
+  ggtitle("Change in Covid Death Rate by modified zipcode",
+          subtitle="July 31 - August 31")  +
+  labs(y="Change in Death Rate", 
+       x="COVID Death Rate, July 31 2020", 
+       caption = "Source:https://github.com/nychealth",
+       size="Population") 
+
+pdr4 <- ggplot(data=JulyBoth,mapping=aes(x=COVID_CASE_RATE.x,y=Pct_Ch_DEATH_RATE, color="red")) + 
+  geom_point(data=JulyBoth,aes(size=POP_DENOMINATOR), alpha=0.5) +
+  #scale_fill_distiller(trans="reverse") +
+  #scale_fill_manual(values=c("red","blue")) +
+  geom_smooth() +
+  theme_minimal() +
+  ggtitle("Percent change in Covid Death Rate by modified zipcode",
+          subtitle="July 31 - August 31")  +
+  labs(y="Percentage Change in Death Rate", 
+       x="COVID Death Rate, July 31 2020", 
+       caption = "Source:https://github.com/nychealth",
+       size="Population") 
+
+#ggarrange(pdr1,pdr2,pdr3,pdr4,nrow=2,ncol=2)
+
+#ggarrange(pdr2,pdr4,nrow=2,ncol=1)
+
+
+```
+
+## Antibody Test results
+
+* Three ZCTA's stand out with high positive antibody rates in excess of 40%: 11368 (Corona/North Corona) , 11219 (Borough Park) and 11369 (Airport/East Elmhurst).
+
+
+```{r readin, echo=FALSE}
+
+AntiB0827 <- read.csv(url("https://raw.githubusercontent.com/nychealth/coronavirus-data/bd0a5fe2dd4e768856b64b1d17b295793ae2488f/testing/antibody-by-modzcta.csv"))
+
+```
+
+```{r analysis, echo = FALSE, message = FALSE, warning= FALSE}
+
+nyc_zcta <- unique(AntiB0827$modzcta_first)  #get the unique zip codes for the nyc
+
+#get longitude,latitude and geometry for ZCTAs
+
+#zip1011 <- tigris::zctas(starts_with = c("11","10"))  #state is only available for 2000 and 2010
+
+#extract zip codes we 
+nyc_zcta_shape <- zip1011[zip1011$ZCTA5CE10 %in% nyc_zcta,]
+
+dat <- merge(AntiB0827,
+             nyc_zcta_shape[,c("ZCTA5CE10","geometry")],
+             by.x=c("modzcta_first"), by.y=c("ZCTA5CE10"))
+
+
+dat_sf <- dat %>% st_as_sf()
+
+
+ggplot(data=dat_sf)  +
+  geom_sf(data=dat_sf, aes(fill=PERCENT_POSITIVE)) +
+  #scale_fill_brewer(palette="Greens")
+  scale_fill_distiller(trans="reverse") +
+  theme(legend.title = element_blank()) +
+  labs(title="Antibody Test Results: Percent Positive ",
+       subtitle="As of: August 27 2020",
+       caption="https://github.com/nychealth/coronavirus-data/tree/master/testing") +
+  theme_minimal() +
+  theme(axis.text.x=element_blank(),
+        axis.text.y=element_blank())
+
+```
