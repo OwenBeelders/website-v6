@@ -6,10 +6,29 @@
     <description>Recent content on A Hugo website</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Sat, 16 May 2020 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Thu, 03 Sep 2020 00:00:00 +0000</lastBuildDate>
     
 	<atom:link href="/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>Covid Cases and Deaths in NY city zip code areas</title>
+      <link>/2020/09/03/covid-cases-and-deaths-in-ny-city-zip-code-areas/</link>
+      <pubDate>Thu, 03 Sep 2020 00:00:00 +0000</pubDate>
+      
+      <guid>/2020/09/03/covid-cases-and-deaths-in-ny-city-zip-code-areas/</guid>
+      <description>Data for NYCThe New York City Department of Health publishes its coronavirus data on github. The repository includes detailed information on the data sets and the definitions of the variables within the data. Our interest is in the zip code data: how virulent is the virus within our neighborhood?
+The files “data-by-modzcta.csv” contain data on cases and deaths by cumulative count and rate, population, percentage of people tested positive and the number of people tested for each modified ZIP code tabulation area (ZCTA).</description>
+    </item>
+    
+    <item>
+      <title>Training for knowledge workers</title>
+      <link>/2020/06/21/training-for-knowledge-workers/</link>
+      <pubDate>Sun, 21 Jun 2020 00:00:00 +0000</pubDate>
+      
+      <guid>/2020/06/21/training-for-knowledge-workers/</guid>
+      <description>Tyler Cowen poses the question: “What is it you do to train that is comparable to a pianist practicing scales?” and references the blog post by David Perell Learn like an athlete.</description>
+    </item>
     
     <item>
       <title>Resume</title>
