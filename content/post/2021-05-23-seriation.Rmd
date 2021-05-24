@@ -1,0 +1,308 @@
+---
+title: Seriation
+author: Owen Beelders
+date: '2021-05-23'
+slug: seriation
+categories: []
+tags: []
+---
+
+## What is seriation?
+
+The verb seriate denotes the arrangement of items in a sequence according to a prescribed criterion.
+
+[Seriation](https://en.wikipedia.org/wiki/Seriation_(archaeology)) is a standard method of dating in archeology, i.e. assemblages or artifacts from numerous sites in the same culture are placed in chronological order.
+
+In psychology, seriation is part of Piaget's theory of cognitive development: during the [Concrete Operational Stage](https://www.simplypsychology.org/concrete-operational.html) of development a child develops the ability to sort objects or situations according to their characteristic. 
+
+In asset allocation, seriation is used to order asset classes by their returns, volatility and correlation. For example, we investigate the risk-return trade-off by ordering assets by their return and/or risk as measured by volatility. To understand the diversification potential of different asset classes we order assets by their correlation.
+
+In this article, we focus on the ordering or seriation of correlation matrices.
+
+
+## Seriation for correlation matrices 
+
+The article "Corrgrams - Exploratory Displays for Correlation Matrices" by Michael Friendly lists three methods for seriation in correlation matrices and we will focus on the following two:
+
+* ordering by the eigenvector associated with the largest eigenvalue (FPC)
+* ordering by the angular order of the two eigenvectors associated with the largest two eigenvalues (AOE)
+
+The corrgrams article is published in [The American Statistician](https://www.tandfonline.com/doi/abs/10.1198/000313002533) and the working paper version is available [here](http://www.datavis.ca/papers/corrgram.pdf).
+
+
+The two methods of seriation are available in the [corrplot](https://cran.r-project.org/web/packages/corrplot/index.html), [corrr](https://cran.r-project.org/web/packages/corrr/index.html) and [seriation](https://cran.r-project.org/web/packages/seriation/index.html) packages.
+
+We use the corrplot package for [plots](https://cran.r-project.org/web/packages/corrplot/vignettes/corrplot-intro.html) of the ordered correlation matrix and the corrr package for [network plots](https://drsimonj.svbtle.com/correlation-network-plot-with-corrr).
+
+
+The most detailed package for applying seriation that I am familiar with is [seriation](https://cran.r-project.org/web/packages/seriation/index.html).  The associated [vignette](https://cran.r-project.org/web/packages/seriation/vignettes/seriation.pdf) contains a very detailed description of seriation methods.
+
+The package [corrr](https://cran.r-project.org/web/packages/corrr/index.html) imports the seriation package.
+
+Falissard (1996) develops a method for ordering correlation matrices by the three eigenvectors associated with the largest three eigenvalues of the correlation matrix. The article is published [Journal of Classification](https://link.springer.com/article/10.1007/BF01246102) and a working paper version is available [here](https://www.researchgate.net/publication/24056034_A_spherical_representation_of_a_correlation_matrix)).
+
+## What is the "angular order"?
+
+Given the two eigen vectors, $e_{1}$ and $e_{2}$, associated with the two largest eigenvalues the ordering of the $i$'th variable is determined by
+$$
+\alpha_{i} = \begin{cases}
+    \tan^{-1}(e_{i1}/e_{i2})  & e_{i1} > 0\\
+    \tan^{-1}(e_{i1}/e_{i2}) + \pi   & \text{otherwise}
+\end{cases}
+$$
+this is how I made sense of this transformation? First, I set up the following table:
+
+* There are four points, one in each of the quadrants of the co-ordinate system (see figure below) and each point will represent a pair of values from the first and second eigen vector $e_{1}$ and $e_{2}$ 
+* By construction each point is at 45, 135, 225 and 315 degrees relative to the origin
+* Given the angle in degrees, I can calculate the angle in radians
+* Assuming that the hypoteneuse is 1, we can calculate the co-ordinates of the points in $e_{1}$ and $e_{2}$ 
+* Now I have $e_{1}$ and $e_{2}$ as my two pseudo/constructed eigenvectors.
+* Now I can work backwards: given the values of eigenvectors I can derive an ordering using the atan function. The column "recover radians" defines the function for recovering the angle in radians and the values of each angle in radians are in the column "atan (rad)". This reduces a two-dimensional relationship to a one-dimensional ordering.
+* However, the angular order of the eigenvectors (AOE)  uses a slightly different formula (AOE Formula) and produces a different ordering.
+
+The AOE method appears to be based on the idea in the following sentence in Friendly's paper, "This circular order is unfolded to a linear order by splitting at the largest gap between adjacent vectors", which I have yet to grasp.
+
+```{r table,echo=FALSE, message = F, warning=F}
+
+library("kableExtra")
+
+tdf <- data.frame( Ad = c(45, 135, 225, 315),
+                   Ar = c(0.79, 2.36, 3.93, 5.49),
+                  e1 = c(0.71, -0.71, -0.71, 0.71),
+                  e2 = c(0.71, 0.71, -0.71, -0.71),
+                  rat = c(1,-1,1,-1),
+                  atan = c(0.79,-0.79,0.79,0.79),
+                  expl = c("atan(e2/e1)","atan(e2/e1) + pi" ,"atan(e2/e1) + pi","atan(e2/e1) + 2pi"),
+                  num = c(0.79, 2.36, 3.93, 5.49),
+                  AOE = c("atan(e2/e1)","atan(e2/e1) + pi","atan(e2/e1) + pi","atan(e2/e1)"),
+                  AOE_num = c(0.79, 2.36, 3.93, -0.79))
+
+kable(tdf, col.names = c("Angle (deg)", "Angle (rad)", "e1", "e2", "e2/e1", "atan(e2/e1)" , "recover radians", "atan (rad)",
+                         "AOE Formula", "AOE"), escape = F) %>%
+  kable_styling(latex_options = "hold_position")
+
+plot(x=tdf$e1,y=tdf$e2, main="First and second eigenvector", ylab="e2",xlab="e1")
+abline(v=0)
+abline(h=0)
+
+
+```
+
+
+
+
+## An Asset Allocation Application Asset Classes
+
+In this section we review the seriation of the correlation matrix in the context of asset allocation. The table below contains the list of asset classes that we use:
+
+* Where possible we use ETF total returns. 
+* Where a complete or long history is unavailable, we splice the ETF returns with those of the underlying benchmark index.
+* We include five equity, one commercial real estate and eleven fixed income etfs.
+* We have considerably more fixed income than equity indexes because we want to analyze the diversification potential of the different types of fixed income sectors during different market regimes.
+* The analysis focuses on two period:s a bull market period prior to the great financial crisis (GFC) (12/5/2003-6/1/2007) and  a bear market period that covers the GFC (6/1/2007-6/30/2009).
+
+```{r assets,echo=FALSE, warning=FALSE, message=FALSE,results='asis'}
+
+library(readxl)
+library("kableExtra")
+library("xtable")
+path <- "C:\\Users\\Owen\\Google Drive\\blog2\\Articles\\seriation"
+#path <- "C:\\Users\\Mastery\\Google Drive\\blog2\\Articles\\seriation"
+asset_class <- read_xlsx(paste0(path,"\\","AssetClasses.xlsx"))
+
+#kable(asset_class, format="html")
+
+ options(knitr.kable.NA = '')
+
+x <- asset_class %>%
+  kbl(caption = "Asset classes: ETF and Index") %>%
+  kable_classic(full_width = F, html_font = "Cambria")  
+  row_spec(x,c(1,3,5:6,8:9,11:12,15:16,19:20,23:24,26:27),background="#DCDCDC") 
+  
+
+```
+
+
+##  Bull Market: December 5 2003 - June 1 2007
+
+* The sample period covers a secular bull market, i.e. large cap asset prices are generally trending up, there was no economic recession during this period, and it covers the tail end of the period known as the great moderation that extended from the 1980's through 2007.
+* In the scree plot, the first eigen vector explains 54% and the second explains 24%. The remaining eigenvalues are significantly smaller than the first two.
+* The first eigenvector has high weights on the fixed income asset classes and the second eigen vector has large weights on the equities.
+* The third eigenvector has one large weight on HY.
+* Fixed Income and Equities are at opposite ends of the quadrant in the scatterplot of the first and second eigenvectors and HY, Real Estate lie somewhere in between
+
+```{r AA, echo=FALSE, warning=FALSE, message = FALSE}
+
+### Create correlation matrix
+##https://tidymodels.github.io/corrr/
+#https://drsimonj.svbtle.com/how-to-create-correlation-network-plots-with-corrr-and-ggraph
+
+###
+# Order
+# 1. Skree plot of eigen values
+# 2. eigen vectors
+# 3. correlation matrices ordered by FPC and AOE
+# 4. network plot
+###
+
+rm(list = ls(all.names = TRUE)) 
+
+library("corrr")
+library("corrplot")
+library("zoo")
+library("tidyverse")
+library("qgraph")   #not using 1graph network plot; prefer that of corrr
+library("ggpubr")
+library("gridGraphics")
+library("gridExtra")
+
+path <- "C:\\Users\\Owen\\Google Drive\\Research\\Seriation\\Data"
+#path <- "C:\\Users\\Mastery\\Google Drive\\Research\\Seriation\\Data"
+
+dat <- read.csv(paste0(path,"\\","ALLDAT04182020.csv"))
+
+orig.names <- names(dat) 
+
+names(dat) <- c("date","LargeCap","MidCap","SmallCap","RealEstate","EAFE","TSY1-3","TSY7-10",
+                "TSY20+","TIPS","LQD","EM","AGG","CMBS","GNMA","MUNI","HY","TSY10-20","TSY3-7",
+                "MBS")
+
+dat$date <- as.Date(dat$date)
+
+#plot(dat$date,dat$LargeCap,type='l')
+#plot(dat$date[1500:1900],dat$LargeCap[1500:1900],type='l')
+
+###Select data between 2003 and 2006
+### TIP stats in 2003-12-05
+### TIPs have the shortest history
+### dat[656,] = "2002-12-31"
+### dat[908,] = "2003-12-31"
+### dat$date[1160] is "2004-12-31"
+### end 	 2007-12-31
+
+###############################################
+#  First Period: Boom - period prior to the GFC
+###############################################
+
+boom <- dat[which(dat$date > "2003-12-05"),]   #this is when tips start
+boom <- boom[which(boom$date < "2007-06-01"),]  #penultimate peak of large cap before the crash
+
+boom <- boom[complete.cases(boom$CMBS),]
+
+plot(boom$date,boom$LargeCap,type='l', main="iShares Core S&P 500 ETF: 5/12/2003-6/1/2007")
+
+zboom <- zoo(boom[,2:20],order.by=boom$date) #so we can calculate returns
+
+retboom <- 100*diff(log(zboom))
+
+##plot the correlation matrix before ordering
+
+corrplot(cor(retboom),method="color",title="Dec 2003 - May 2007", mar=c(0,0,2,0))
+
+#default seriation of rearrange is PCA
+boomcorr <- retboom %>% correlate() %>% rearrange()   #rearrange brings the largest correlations closest to the diagonal
+
+
+#plot of percentage explained by the eigenvalues
+retboom <- retboom[,names(boomcorr)[2:ncol(boomcorr)]]
+eig_boom <- eigen(cor(retboom))
+pboom <- eig_boom$values/sum(eig_boom$values)
+barplot(pboom, names.arg = seq(1,19,1), main="scree plot: 12/5/2003-6/1/2007")   #skree plot
+
+
+names(eig_boom$vectors) <- seq(1,19,1)
+dfboom <- as_tibble(eig_boom$vectors)
+dfboom$vars=names(retboom)
+dfboom <- dfboom[order(dfboom$V1),]
+dfboom$vorder <- seq(1,19,1)
+dfboom$vars <- factor(dfboom$vars,levels=dfboom$vars[order(dfboom$vorder)])
+
+
+b1 <- ggplot(data=dfboom,mapping=aes(x=vars,y=V1, fill="blue")) +geom_col() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  scale_x_discrete(name="Asset Classes") +
+  scale_y_continuous(name="First eigenvector") +
+  theme(plot.background = element_blank()) +
+  theme(panel.background = element_blank()) +
+  theme(legend.position="none") +
+  scale_fill_brewer(palette = "Set1")+
+  theme(plot.margin = unit(c(1,1,1,1),"cm"))+
+  labs(title="First Eigenvector: 12/5/2003-6/1/2007 ")
+  
+  
+b2 <- ggplot(data=dfboom,mapping=aes(x=vars,y=V2, fill="blue")) +geom_col() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  scale_x_discrete(name="Asset Classes") +
+  scale_y_continuous(name="Second eigenvector") +
+  theme(plot.background = element_blank()) +
+  theme(panel.background = element_blank()) +
+  theme(legend.position="none") +
+  scale_fill_brewer(palette = "Set1")+
+  theme(plot.margin = unit(c(1,1,1,1),"cm"))+
+  labs(title="Second Eigenvector: 12/5/2003-6/1/2007")
+
+
+b3 <- ggplot(data=dfboom,mapping=aes(x=vars,y=V3, fill="blue")) +geom_col() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  scale_x_discrete(name="Asset Classes") +
+  scale_y_continuous(name="Third eigenvector") +
+  theme(plot.background = element_blank()) +
+  theme(panel.background = element_blank()) +
+  theme(legend.position="none") +
+  scale_fill_brewer(palette = "Set1")+
+  theme(plot.margin = unit(c(1,1,1,1),"cm"))+
+  labs(title="Third Eigenvector: 12/5/2003-6/1/2007")
+
+b4 <- ggplot(data=dfboom,mapping=aes(x=V1,y=V2)) +geom_point(alpha=0.5) +
+  scale_x_continuous(limits=c(-.1,0.4),name="First eigenvector (54%)") +
+  scale_y_continuous(limits=c(-.5,0.20),name="Second eigenvector (24%)") +
+  geom_hline(yintercept=0) +
+  geom_vline(xintercept=0) +
+  annotate("text",x=0.1,y=-0.46, label="Smallcap, Midcap, Largecap") +
+  annotate("text",x=0.15,y=-0.3, label="Real Estate") +
+  annotate("text",x=-0.01,y=-0.39, label="EM") +
+  annotate("text",x=0.08,y=-0.39, label="EAFE") +
+  annotate("text",x=0.14,y=-0.13, label="HY") +
+  annotate("text",x=0.3,y=0.10,label="Fixed Income")+
+  theme(plot.background = element_blank()) +
+  theme(panel.background = element_blank()) +
+  theme(plot.margin = unit(c(1,1,1,1),"cm"))+
+  labs(title="Scatterplot of first and second Eigenvector: 12/5/2003-6/1/2007")
+
+
+#ggarrange(b1,b2,b3,b4, ncol = 1, nrow = 4)  #plot eigenvectors
+
+b1
+b2
+b3
+b4
+
+```
+
+There is not much difference between the correlation matrices when ordering by the first eigenvector or by the AOE. It is clear from the plot that equities are grouped in the top left corner and are highly correlated within that group and fixed income is grouped in the bottom right corner and are highly correlated within the group. HY and Real Estate are at the boundary between the two groups. Where correlations are negative, they are close to zero.
+
+The network diagram captures the same idea: equites and fixed income form two separate groups with HY and Real Estate somehwere in between. 
+
+```{r corr1, echo=FALSE, warning=FALSE, message = FALSE}
+
+#default seriation of rearrange is PCA
+boomcorr <- retboom %>% correlate() %>% rearrange()   #rearrange brings the largest correlations closest to the diagonal
+
+#correlation matrices
+#layout(matrix(1:2,nrow=1,ncol=2))
+corrplot(cor(retboom),method="color",order="FPC",title="Dec 2003 - May 2007: FPC", mar=c(0,0,2,0))
+corrplot(cor(retboom),method="color",order="AOE",title="Dec 2003 - May 2007: AOE", mar=c(0,0,2,0))
+#dev.off()
+
+#network plot
+retboom %>% correlate %>% network_plot(min_cor=0.2)  #network plot
+
+```
+
+
+
+## What do we learn from the above analysis?
+
+1. Seriation or ordering of the correlation helps to elucidate the relationships within a correlation matrix. 
+2. During the bull market, fixed income and equity assets formed two distinct asset classes and each highly correlated within the asset class. 
+ 
