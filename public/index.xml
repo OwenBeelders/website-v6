@@ -6,10 +6,21 @@
     <description>Recent content on A Hugo website</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Thu, 03 Sep 2020 00:00:00 +0000</lastBuildDate>
+    <lastBuildDate>Sun, 23 May 2021 00:00:00 +0000</lastBuildDate>
     
 	<atom:link href="/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>Seriation</title>
+      <link>/2021/05/23/seriation/</link>
+      <pubDate>Sun, 23 May 2021 00:00:00 +0000</pubDate>
+      
+      <guid>/2021/05/23/seriation/</guid>
+      <description>What is seriation?The verb seriate denotes the arrangement of items in a sequence according to a prescribed criterion.
+Seriation is a standard method of dating in archeology, i.e. assemblages or artifacts from numerous sites in the same culture are placed in chronological order.
+In psychology, seriation is part of Piaget’s theory of cognitive development: during the Concrete Operational Stage of development a child develops the ability to sort objects or situations according to their characteristic.</description>
+    </item>
     
     <item>
       <title>Covid Cases and Deaths in NY city zip code areas</title>
