@@ -6,3 +6,318 @@ slug: comparing-bull-and-bear-markets
 categories: []
 tags: []
 ---
+
+## Comparing Bull and Bear Markets
+
+In the previous [post](https://owenbeelders.netlify.app/2021/05/23/seriation/), we reviewed the structure of the correlation matrix during a bull market. We found that fixed income and equity assets formed two distinct asset classes and each highly correlated within the asset class. In the post we calculate and order the correlation during a bear market and compare it to the correlation matrix during a bull market.
+
+## What do we learn from the analysis below?
+
+1. The correlation between asset classes changes according to the state of the market.
+2. During the bull market, fixed income and equity assets formed two distinct groups and asset classes are highly correlated within each group.
+3. During the bear market, the fixed income asset classes are bifurcated into those without credit risk and those with credit risk.
+4. During the bear market, the treasury etfs are most negatively correlated with the equity etfs. TIPS, GNMA and MBS that have no credit risk have a lower negative correlation with equities while Barclays Agg, Munis and the LQD index, that have more credit risk have a positive correlation with equities. HY is also positively correlated with equities and so is CMBS.
+5. The two take-aways from this analysis are first, that only treasures have a strong negative correlation with equities during a bear market, and second, the return from the fixed income assets should compensate you for both duration and credit risk because in a bear market the true credit risk will be revealed.
+
+
+```{r assets,eval=FALSE, echo=FALSE, warning=FALSE, message=FALSE,results='asis'}
+
+library(readxl)
+library("kableExtra")
+library("xtable")
+path <- "C:\\Users\\Owen\\Google Drive\\blog2\\Articles\\seriation"
+#path <- "C:\\Users\\Mastery\\Google Drive\\blog2\\Articles\\seriation"
+asset_class <- read_xlsx(paste0(path,"\\","AssetClasses.xlsx"))
+
+#kable(asset_class, format="html")
+
+ options(knitr.kable.NA = '')
+
+x <- asset_class %>%
+  kbl(caption = "Asset classes: ETF and Index") %>%
+  kable_classic(full_width = F, html_font = "Cambria")  
+  row_spec(x,c(1,3,5:6,8:9,11:12,15:16,19:20,23:24,26:27),background="#DCDCDC") 
+  
+
+```
+
+
+
+
+```{r AA, echo=FALSE, warning=FALSE, message = FALSE}
+
+### Create correlation matrix
+##https://tidymodels.github.io/corrr/
+#https://drsimonj.svbtle.com/how-to-create-correlation-network-plots-with-corrr-and-ggraph
+
+###
+# Order
+# 1. Skree plot of eigen values
+# 2. eigen vectors
+# 3. correlation matrices ordered by FPC and AOE
+# 4. network plot
+###
+
+rm(list = ls(all.names = TRUE)) 
+
+library("corrr")
+library("corrplot")
+library("zoo")
+library("tidyverse")
+library("qgraph")   #not using 1graph network plot; prefer that of corrr
+library("ggpubr")
+library("gridGraphics")
+library("gridExtra")
+
+path <- "C:\\Users\\Owen\\Google Drive\\Research\\Seriation\\Data"
+#path <- "C:\\Users\\Mastery\\Google Drive\\Research\\Seriation\\Data"
+
+dat <- read.csv(paste0(path,"\\","ALLDAT04182020.csv"))
+
+orig.names <- names(dat) 
+
+names(dat) <- c("date","LargeCap","MidCap","SmallCap","RealEstate","EAFE","TSY1-3","TSY7-10",
+                "TSY20+","TIPS","LQD","EM","AGG","CMBS","GNMA","MUNI","HY","TSY10-20","TSY3-7",
+                "MBS")
+
+dat$date <- as.Date(dat$date)
+
+#plot(dat$date,dat$LargeCap,type='l')
+#plot(dat$date[1500:1900],dat$LargeCap[1500:1900],type='l')
+
+###Select data between 2003 and 2006
+### TIP stats in 2003-12-05
+### TIPs have the shortest history
+### dat[656,] = "2002-12-31"
+### dat[908,] = "2003-12-31"
+### dat$date[1160] is "2004-12-31"
+### end 	 2007-12-31
+```
+
+```{r boom, eval=FALSE, echo=FALSE}
+###############################################
+#  First Period: Boom - period prior to the GFC
+###############################################
+
+boom <- dat[which(dat$date > "2003-12-05"),]   #this is when tips start
+boom <- boom[which(boom$date < "2007-06-01"),]  #penultimate peak of large cap before the crash
+
+boom <- boom[complete.cases(boom$CMBS),]
+
+plot(boom$date,boom$LargeCap,type='l', main="iShares Core S&P 500 ETF: 5/12/2003-6/1/2007")
+
+zboom <- zoo(boom[,2:20],order.by=boom$date) #so we can calculate returns
+
+retboom <- 100*diff(log(zboom))
+
+#default seriation of rearrange is PCA
+boomcorr <- retboom %>% correlate() %>% rearrange()   #rearrange brings the largest correlations closest to the diagonal
+
+
+#plot of percentage explained by the eigenvalues
+retboom <- retboom[,names(boomcorr)[2:ncol(boomcorr)]]
+eig_boom <- eigen(cor(retboom))
+pboom <- eig_boom$values/sum(eig_boom$values)
+barplot(pboom, names.arg = seq(1,19,1), main="scree plot: 12/5/2003-6/1/2007")   #skree plot
+
+
+names(eig_boom$vectors) <- seq(1,19,1)
+dfboom <- as_tibble(eig_boom$vectors)
+dfboom$vars=names(retboom)
+dfboom <- dfboom[order(dfboom$V1),]
+dfboom$vorder <- seq(1,19,1)
+dfboom$vars <- factor(dfboom$vars,levels=dfboom$vars[order(dfboom$vorder)])
+
+
+b1 <- ggplot(data=dfboom,mapping=aes(x=vars,y=V1, fill="blue")) +geom_col() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  scale_x_discrete(name="Asset Classes") +
+  scale_y_continuous(name="First eigenvector") +
+  theme(plot.background = element_blank()) +
+  theme(panel.background = element_blank()) +
+  theme(legend.position="none") +
+  scale_fill_brewer(palette = "Set1")+
+  theme(plot.margin = unit(c(1,1,1,1),"cm"))+
+  labs(title="First Eigenvector: 12/5/2003-6/1/2007 ")
+  
+  
+b2 <- ggplot(data=dfboom,mapping=aes(x=vars,y=V2, fill="blue")) +geom_col() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  scale_x_discrete(name="Asset Classes") +
+  scale_y_continuous(name="Second eigenvector") +
+  theme(plot.background = element_blank()) +
+  theme(panel.background = element_blank()) +
+  theme(legend.position="none") +
+  scale_fill_brewer(palette = "Set1")+
+  theme(plot.margin = unit(c(1,1,1,1),"cm"))+
+  labs(title="Second Eigenvector: 12/5/2003-6/1/2007")
+
+
+b3 <- ggplot(data=dfboom,mapping=aes(x=vars,y=V3, fill="blue")) +geom_col() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  scale_x_discrete(name="Asset Classes") +
+  scale_y_continuous(name="Third eigenvector") +
+  theme(plot.background = element_blank()) +
+  theme(panel.background = element_blank()) +
+  theme(legend.position="none") +
+  scale_fill_brewer(palette = "Set1")+
+  theme(plot.margin = unit(c(1,1,1,1),"cm"))+
+  labs(title="Third Eigenvector: 12/5/2003-6/1/2007")
+
+b4 <- ggplot(data=dfboom,mapping=aes(x=V1,y=V2)) +geom_point(alpha=0.5) +
+  scale_x_continuous(limits=c(-.1,0.4),name="First eigenvector (54%)") +
+  scale_y_continuous(limits=c(-.5,0.20),name="Second eigenvector (24%)") +
+  geom_hline(yintercept=0) +
+  geom_vline(xintercept=0) +
+  annotate("text",x=0.1,y=-0.46, label="Smallcap, Midcap, Largecap") +
+  annotate("text",x=0.15,y=-0.3, label="Real Estate") +
+  annotate("text",x=-0.01,y=-0.39, label="EM") +
+  annotate("text",x=0.08,y=-0.39, label="EAFE") +
+  annotate("text",x=0.14,y=-0.13, label="HY") +
+  annotate("text",x=0.3,y=0.10,label="Fixed Income")+
+  theme(plot.background = element_blank()) +
+  theme(panel.background = element_blank()) +
+  theme(plot.margin = unit(c(1,1,1,1),"cm"))+
+  labs(title="Scatterplot of first and second Eigenvector: 12/5/2003-6/1/2007")
+
+
+#ggarrange(b1,b2,b3,b4, ncol = 1, nrow = 4)  #plot eigenvectors
+
+b1
+b2
+b3
+b4
+
+```
+
+
+
+```{r corr1, eval=FALSE, echo=FALSE, warning=FALSE, message = FALSE}
+
+#default seriation of rearrange is PCA
+boomcorr <- retboom %>% correlate() %>% rearrange()   #rearrange brings the largest correlations closest to the diagonal
+
+#correlation matrices
+#layout(matrix(1:2,nrow=1,ncol=2))
+corrplot(cor(retboom),method="color",order="FPC",title="Dec 2003 - May 2007: FPC", mar=c(0,0,2,0))
+corrplot(cor(retboom),method="color",order="AOE",title="Dec 2003 - May 2007: AOE", mar=c(0,0,2,0))
+#dev.off()
+
+#network plot
+retboom %>% correlate %>% network_plot(min_cor=0.2)  #network plot
+
+```
+
+
+## Bear Market: 6/1/2007-6/30/2009
+
+* Large Cap equities trend down during this sample period with an especially large drop in 2008.
+* In the scree plot of the eigenvalues, the first eigenvector explains 43%, the second explains 23% and the remaining eigenvectors a much smaller proportion of the variation.
+* The first eigenvector captures the difference between equities and fixed income while the second eigenvector reflects the systemic shock that impacts all assets during this period.
+* The third eigenvector has large weights on HY, the LQD, Muni and Agg indexes; this may reflect the combination of both credit risk and duration risk in these asset classes.
+* In the Scatterplot of the first and second eigenvector, equities and treasures continue to be at the two ends of the spectrum, but there is more differentiation between the other asset classes.
+* In the correlation matrix that has been ordered by the first principal component (FPC), we see three distinct groups: equities in the top left, treasuries in he bottom right and the middle is occupied by the asset classes that have both equity and credit risk or contain other types of risk, e.g. Muni's. The other feature that stands out in the bottom left and top right is the negative correlation between treasuries and equities.
+* When the correlation matrix is ordered by the AOE, the treasuries and equities stand out as groups that have high positive correlation within each group and negative correlated between the groups. The asset classes ordered from LQD through TIPS are all fixed income and are having varying levels of correlation with treasuries and the lower the correlation with treasuries, the less negative the correlation with equities.
+
+```{r crash, echo=FALSE, warning=FALSE, message = FALSE}
+
+######################################################
+# CRASH - what period
+# https://www.nber.org/cycles.html
+# December 2007 - June 2009
+########################################
+
+crash <- dat[which(dat$date > as.Date("2007-06-01",format="%Y-%m-%d")),]  #starts where pre-crash period ended
+crash <- crash[1:524,]    #"2009-06-30" last day of June; June was recession trough 
+crash <- crash[complete.cases(crash$CMBS),]
+
+plot(crash$date,crash$LargeCap,type='l', main="iShares Core S&P 500 ETF: 6/1/2007-6/30/2009")
+
+zcrash <- zoo(crash[,2:20],order.by=crash$date)
+retcrash <- 100*diff(log(zcrash))
+
+
+
+#plot eigenvalues
+eig_crash <- eigen(cor(retcrash))
+peig_crash <- eig_crash$values/sum(eig_crash$values)
+barplot(peig_crash,names.arg = seq(1,19,1), main="scree plot: 6/1/2007-6/30/2009")
+
+names(eig_crash$vectors) <- seq(1,19,1)
+dfcrash <- as_tibble(eig_crash$vectors)
+dfcrash$vars=names(retcrash)
+dfcrash <- dfcrash[order(dfcrash$V1),]
+dfcrash$vorder <- seq(1,19,1)
+dfcrash$vars <- factor(dfcrash$vars,levels=dfcrash$vars[order(dfcrash$vorder)])
+
+c1 <- ggplot(data=dfcrash,mapping=aes(x=vars,y=V1, fill="blue")) +geom_col() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  scale_x_discrete(name="Asset Classes") +
+  scale_y_continuous(name="First eigenvector") +
+  theme(plot.background = element_blank()) +
+  theme(panel.background = element_blank()) +
+  theme(legend.position="none") +
+  scale_fill_brewer(palette = "Set1")+
+  theme(plot.margin = unit(c(1,1,1,1),"cm")) +
+  labs(title="First Eigenvector: 6/1/2007-6/30/2009")
+
+
+c2 <- ggplot(data=dfcrash,mapping=aes(x=vars,y=V2, fill="blue")) +geom_col() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  scale_x_discrete(name="Asset Classes") +
+  scale_y_continuous(name="Second eigenvector") +
+  theme(plot.background = element_blank()) +
+  theme(panel.background = element_blank()) +
+  theme(legend.position="none") +
+  scale_fill_brewer(palette = "Set1")+
+  theme(plot.margin = unit(c(1,1,1,1),"cm")) +
+  labs(title="Second Eigenvector: 6/1/2007-6/30/2009")
+
+
+c3 <- ggplot(data=dfcrash,mapping=aes(x=vars,y=V3, fill="blue")) +geom_col() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  scale_x_discrete(name="Asset Classes") +
+  scale_y_continuous(name="Third eigenvector") +
+  theme(plot.background = element_blank()) +
+  theme(panel.background = element_blank()) +
+  theme(legend.position="none") +
+  scale_fill_brewer(palette = "Set1")+
+  theme(plot.margin = unit(c(1,1,1,1),"cm")) +
+  labs(title="Third Eigenvector: 6/1/2007-6/30/2009")
+
+c4 <-  ggplot(data=dfcrash,mapping=aes(x=V1,y=V2)) +geom_point(alpha=0.5) +
+  scale_x_continuous(limits=c(-.4,0.4),name="First eigenvector (43%)") +
+  scale_y_continuous(limits=c(-.4,0.1),name="Second eigenvector (24%)") +
+  geom_hline(yintercept=0) +
+  geom_vline(xintercept=0) +
+  annotate("text",x=-0.35,y=-0.25, label="Equities") +
+  annotate("text",x=-0.14,y=-0.28, label="Real Estate") +
+  annotate("text",x=0.32,y=-0.12, label="Treasuries") +
+  annotate("text",x=0.12,y=-0.25, label="AGG") +
+  annotate("text",x=0.26,y=-0.29, label="GNMA,TIPS") +
+  theme(plot.background = element_blank()) +
+  theme(panel.background = element_blank()) +
+  theme(plot.margin = unit(c(1,1,1,1),"cm")) +
+  labs(title="Scatterplot of first and second Eigenvector: 6/1/2007-6/30/2009")
+
+#ggarrange(c1,c2,c3,c4, ncol = 2, nrow = 2)
+
+c1
+c2
+c3
+c4
+
+
+
+#corrplot(as.matrix(cor(retcrash),diagonal=1),method="color")
+
+#layout(matrix(1:2,nrow=1,ncol=2))
+corrplot(cor(retcrash),method="color",order="FPC",title="June 2007- June 2009: FPC", mar=c(0,0,2,0))
+corrplot(cor(retcrash),method="color",order="AOE",title="June 2007- June 2009: AOE", mar=c(0,0,2,0))
+#dev.off()
+
+retcrash %>% correlate() %>% network_plot(min_cor=0.2)  #include network plot
+
+```
+
+
